@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OrbitForge - Next-Gen Kinetic Audio Engine v1.0</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Vazirmatn:wght@300;500;700&display=swap');
+
+        :root {
+            --accent: #00f2ff;
+            --accent-glow: rgba(0, 242, 255, 0.4);
+            --bg: #020617;
+            --panel: rgba(15, 23, 42, 0.94);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --card: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --danger: #f43f5e;
+            --success: #22c55e;
+            --warning: #fbbf24;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg); color: var(--text);
+            font-family: 'Vazirmatn', sans-serif; overflow: hidden;
+            touch-action: auto;
+        }
+        body.en { font-family: 'Orbitron', sans-serif; }
+
+        #desktop { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+        .taskbar {
+            position: absolute; top: 0; width: 100%; height: 50px;
+            background: var(--panel); backdrop-filter: blur(16px);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; border-bottom: 1px solid var(--panel-border);
+            z-index: 1000;
+        }
+
+        .sys-stats { 
+            display: flex; gap: 10px; font-family: monospace; font-size: 11px; 
+            color: var(--accent); align-items: center; 
+        }
+
+        .side-panel {
+            position: absolute; right: -440px; top: 50px; bottom: 0; width: 420px;
+            background: var(--panel); backdrop-filter: blur(20px);
+            border-left: 1px solid var(--panel-border);
+            padding: 20px; overflow-y: auto; z-index: 900;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            touch-action: pan-y;
+            will-change: transform;
+        }
+        .side-panel.open { transform: translateX(-420px); }
+        body.en .side-panel.open { transform: translateX(420px); left: -420px; right: auto; border-left: none; border-right: 1px solid var(--panel-border); }
+
+        .action-bar {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 12px; z-index: 500;
+            width: 100%; justify-content: center; flex-wrap: wrap;
+            padding: 0 12px; pointer-events: none;
+        }
+
+        .btn {
+            pointer-events: auto;
+            padding: 10px 18px; border-radius: 12px; border: 1px solid var(--panel-border);
+            cursor: pointer; font-weight: 700; font-family: inherit;
+            background: var(--card); color: #fff; display: inline-flex; align-items: center; gap: 6px;
+            white-space: nowrap; transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 13px;
+        }
+        .btn:hover { background: var(--accent); color: #020617; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-primary { background: var(--accent); color: #020617; }
+        .btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(0,242,255,0.3); color: var(--accent); }
+        .btn-secondary:hover { background: var(--accent); color: #020617; }
+
+        .taskbar-btn {
+            padding: 4px 10px !important; font-size: 12px !important; border-radius: 8px !important;
+        }
+
+        #terminal-win {
+            position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); 
+            width: 92%; max-width: 560px; height: 320px;
+            background: rgba(2, 6, 23, 0.96); border-radius: 14px; border: 1px solid #334155;
+            display: none; flex-direction: column; z-index: 850; 
+            font-family: 'Courier New', monospace; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+            direction: ltr !important; text-align: left; overflow: hidden;
+            touch-action: pan-y;
+        }
+
+        #term-header {
+            padding: 8px 14px; background: #0f172a; font-size: 11px; 
+            border-radius: 13px 13px 0 0; display: flex; 
+            justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #334155; flex-shrink: 0;
+        }
+
+        #term-logs {
+            flex: 1; padding: 12px; overflow-y: auto; color: #4ade80; 
+            font-size: 12px; line-height: 1.6; scroll-behavior: smooth;
+            word-break: break-all;
+        }
+
+        #term-input {
+            background: #0f172a; border: none; 
+            border-top: 1px solid #334155; color: #fff; 
+            padding: 12px; outline: none; font-family: monospace; 
+            width: 100%; display: block; flex-shrink: 0; direction: ltr;
+        }
+
+        .settings-section-title {
+            font-size: 14px; color: var(--accent); font-weight: bold;
+            margin: 20px 0 10px 0; border-bottom: 1px solid rgba(0,242,255,0.2);
+            padding-bottom: 6px; display: flex; align-items: center; gap: 6px;
+        }
+
+        .setting-row { margin-bottom: 14px; }
+        .setting-row label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--accent); font-weight: bold; }
+        
+        .toggle-row { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .toggle-row span { font-size: 12px; }
+
+        input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+        input[type="color"] { width: 100%; height: 36px; border: none; border-radius: 8px; background: transparent; cursor: pointer; }
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+        input[type="text"], select { 
+            width: 100%; padding: 8px 10px; background: rgba(15, 23, 42, 0.9); 
+            border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; 
+            font-family: inherit; outline: none; font-size: 12px; transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+
+        .orbit-card {
+            background: var(--card); padding: 10px; border-radius: 8px; margin-bottom: 8px;
+            border-right: 4px solid var(--orb-c); border-left: none;
+        }
+        body.en .orbit-card { border-left: 4px solid var(--orb-c); border-right: none; }
+
+        canvas#mainCanvas { 
+            display: block; cursor: crosshair; 
+            touch-action: none; 
+            will-change: transform;
+        }
+        canvas.grabbing { cursor: grabbing; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(12px);
+            display: flex; justify-content: center; align-items: center; z-index: 2000;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal-content {
+            background: var(--panel); border: 1px solid var(--panel-border);
+            border-radius: 20px; padding: 26px; max-width: 480px; width: 90%;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5); text-align: center;
+        }
+
+        #toast-container {
+            position: fixed; top: 60px; left: 20px; z-index: 1500;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 23, 42, 0.95); border-left: 4px solid var(--accent);
+            padding: 10px 16px; border-radius: 8px; color: #fff; font-size: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: toastIn 0.3s ease forwards;
+            backdrop-filter: blur(10px);
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 600px) {
+            .side-panel { width: 100%; right: -100%; }
+            .side-panel.open { transform: translateX(-100%); }
+            body.en .side-panel.open { transform: translateX(100%); left: -100%; }
+            .btn span { font-size: 11px; }
+            .btn { padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body id="app-body">
+
+    <div id="desktop">
+        <!-- Taskbar (Redesigned with minimalist buttons & dropdown stats) -->
+        <div class="taskbar">
+            <div style="display:flex; gap:6px;">
+                <button class="btn taskbar-btn" onclick="OrbitForge.UI.toggleSidebar()">⚙️ <span id="txt-settings">تنظیمات</span></button>
+                <button class="btn taskbar-btn" onclick="OrbitForge.UI.switchLang()">🌐 EN/FA</button>
+            </div>
+            <div id="sys-stats-container" class="sys-stats">
+                <span id="stat-score" style="color:#ffd700; font-weight:bold; display:none;">🏆 0</span>
+                <span id="stat-fps" title="FPS" style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px;">60 FPS</span>
+                <span id="stat-audio-badge" title="Audio Status" style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="OrbitForge.Core.toggleAudioMute()">🔊 SFX</span>
+            </div>
+        </div>
+
+        <canvas id="mainCanvas"></canvas>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button class="btn btn-secondary" onclick="OrbitForge.Core.toggleAudioMute()"><span id="txt-mute">🔊 صدا</span></button>
+            <button class="btn" onclick="OrbitForge.Core.boost()" title="Shortcut: Shift"><span id="txt-boost">🚀 بوست سرعت</span></button>
+            <button class="btn btn-primary" onclick="OrbitForge.Core.switchOrbit()" title="Shortcut: Space"><span id="txt-switch">🔄 سوئیچ مدار</span></button>
+        </div>
+
+        <!-- Terminal Window -->
+        <div id="terminal-win">
+            <div id="term-header">
+                <span style="font-weight: bold; letter-spacing: 1px; color: var(--accent);">ORBITFORGE ENGINE v1.0 SHELL</span>
+                <div style="display:flex; gap:12px;">
+                     <span style="color:#94a3b8; cursor:pointer; font-size: 16px;" title="Clear" onclick="OrbitForge.Terminal.runCmd('clear')">♻️</span>
+                     <span style="color:#ef4444; cursor:pointer; font-size: 16px;" title="Close" onclick="OrbitForge.UI.toggleTerminal()">✕</span>
+                </div>
+            </div>
+            <div id="term-logs">
+                <div style="color:#00f2ff">OrbitForge v1.0 Audio-Kinetic Engine Initialized.</div>
+                <div style="color:#64748b">Type 'help' to inspect audio, performance, and custom scripts.</div>
+            </div>
+            <input type="text" id="term-input" placeholder="Enter command (e.g., help, score on)..." autocomplete="off">
+        </div>
+
+        <!-- Settings Sidebar Drawer (Divided into 4 Structured Sections) -->
+        <div id="settings-sidebar" class="side-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 id="set-h-main" style="margin:0; color:var(--accent); font-size:16px;">تنظیمات پیشرفته سیستم</h2>
+                <span style="cursor:pointer; font-size:18px; color:#94a3b8;" onclick="OrbitForge.UI.toggleSidebar()">✕</span>
+            </div>
+
+            <!-- بخش ۱: نمایش و ظاهر -->
+            <div class="settings-section-title">🎨 ۱. نمایش و ظاهر</div>
+            <div class="setting-row">
+                <label id="set-l-bg">رنگ پس‌زمینه محیط</label>
+                <input type="color" id="in-bg" value="#020617" oninput="OrbitForge.UI.applySettings()">
+            </div>
+            <div class="setting-row">
+                <label id="set-l-player">رنگ توپ (بازیکن)</label>
+                <input type="color" id="in-player-c" value="#ffffff" oninput="OrbitForge.UI.applySettings()">
+            </div>
+            <div class="setting-row">
+                <label>سبک پس‌زمینه</label>
+                <select id="select-bg-style" onchange="OrbitForge.UI.applySettings()">
+                    <option value="grid">خطوط شبکه (Grid)</option>
+                    <option value="stars">ستاره‌های متحرک (Stars)</option>
+                    <option value="lines">خطوط ماتریکس (Lines)</option>
+                    <option value="clean">ساده و یکدست (Clean)</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label id="set-l-trail">طول دنباله نورانی (Trail)</label>
+                <input type="range" id="in-trail" min="0" max="60" value="25" oninput="OrbitForge.UI.applySettings()">
+            </div>
+            <div class="setting-row">
+                <label id="set-l-opacity">شفافیت مدارهای غیرفعال</label>
+                <input type="range" id="in-opacity" min="0" max="100" value="15" oninput="OrbitForge.UI.applySettings()">
+            </div>
+            <div class="toggle-row">
+                <span>نمایش بصری رنگی نت‌ها روی صفحه</span>
+                <input type="checkbox" id="check-visual-notes" checked onchange="OrbitForge.UI.applySettings()">
+            </div>
+
+            <!-- بخش ۲: صدا و موسیقی -->
+            <div class="settings-section-title">🎵 ۲. صدا و موسیقی</div>
+            <div class="toggle-row">
+                <span id="set-t-sfx">افکت‌های صوتی (SFX)</span>
+                <input type="checkbox" id="check-sfx" checked onchange="OrbitForge.UI.applyResources()">
+            </div>
+            <div class="toggle-row">
+                <span id="set-t-music">موسیقی داینامیک پیشرفته (Music)</span>
+                <input type="checkbox" id="check-music" onchange="OrbitForge.UI.applyResources()">
+            </div>
+
+            <!-- Music Sub-Studio -->
+            <div id="music-settings-container" style="display:none; background:rgba(0,0,0,0.3); padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid var(--panel-border);">
+                <div class="setting-row">
+                    <label>حالت پخش موسیقی</label>
+                    <select id="select-audio-mode" onchange="OrbitForge.Audio.switchAudioMode(this.value)">
+                        <option value="offline">آفلاین (کد نت‌نویسی / پریست)</option>
+                        <option value="online">آنلاین (لینک مستقیم صوتی)</option>
+                    </select>
+                </div>
+
+                <!-- Offline Mode Config -->
+                <div id="mode-offline-box">
+                    <div class="setting-row">
+                        <label id="set-l-preset">پریست موسیقی پیش‌فرض</label>
+                        <select id="select-preset" onchange="OrbitForge.Audio.setPreset(this.value)">
+                            <option value="cinematic">سینمایی کهکشانی</option>
+                            <option value="cyberpunk">سایبرپانک آرپژ</option>
+                            <option value="ambient">آرامش‌بخش فضایی</option>
+                            <option value="chiptune">کلاسیک آرکید</option>
+                            <option value="deepspace">عمق فضا</option>
+                            <option value="hyperdrive">هایپردریو ریتمیک</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label style="color:#00f2ff;">🎹 کد نت سفارشی (Custom Score)</label>
+                        <input type="text" id="in-custom-song" placeholder="E4:0.25, G4:0.25, A4:0.5" style="margin-bottom:6px;">
+                        <button class="btn btn-secondary" style="padding:6px 10px; font-size:11px; width:100%; justify-content:center;" onclick="OrbitForge.Audio.playCustomInput()">▶ پخش کد نت</button>
+                    </div>
+                </div>
+
+                <!-- Online Mode Config -->
+                <div id="mode-online-box" style="display:none;">
+                    <div class="setting-row">
+                        <label style="color:#00f2ff;">🔗 لینک فایل صوتی (MP3 / WAV / OGG)</label>
+                        <div style="display:flex; gap:6px;">
+                            <input type="text" id="in-online-url" placeholder="https://example.com/audio.mp3">
+                            <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="OrbitForge.Audio.playOnlineStream()">پخش</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Favorites List -->
+                <div class="setting-row" style="margin-top:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <label style="margin:0;">❤️ علاقه‌مندی‌ها (Favorites)</label>
+                        <button class="btn btn-secondary" style="padding:3px 8px; font-size:10px;" onclick="OrbitForge.Audio.addCurrentToFavorites()">+ افزودن فعلی</button>
+                    </div>
+                    <div id="favorites-list-ui" style="max-height:100px; overflow-y:auto; background:rgba(255,255,255,0.02); padding:6px; border-radius:6px; font-size:11px;"></div>
+                </div>
+
+                <!-- Sound Enhancements (Lowpass Filter & Reverb simulation) -->
+                <div class="setting-row" style="margin-top:10px;">
+                    <label id="set-l-vol">حجم صدای اصلی (Volume)</label>
+                    <input type="range" id="in-music-vol" min="1" max="200" value="80" oninput="OrbitForge.UI.applyResources()">
+                </div>
+                <div class="setting-row">
+                    <label id="set-l-tempo">سرعت ریتم (Tempo / BPM)</label>
+                    <input type="range" id="in-tempo" min="300" max="1500" value="700" oninput="OrbitForge.UI.applyResources()">
+                </div>
+                <div class="toggle-row">
+                    <span>فیلتر صوتی نرم‌کننده (Lowpass Filter 2000Hz)</span>
+                    <input type="checkbox" id="check-lowpass" checked onchange="OrbitForge.Audio.updateFilter()">
+                </div>
+                <p style="color:#94a3b8; font-size:11px; margin:4px 0 0 0; line-height:1.4;">موسیقی متن و افکت‌ها با فیلتر پیشرفته صوتی برای رفع گوش‌خراشی و ایجاد حس فضایی تنظیم شده‌اند.</p>
+            </div>
+
+            <!-- بخش ۳: گیم‌پلی و مدارها -->
+            <div class="settings-section-title">🕹️ ۳. گیم‌پلی و مدارها</div>
+            <div class="setting-row">
+                <label id="set-l-speed">سرعت چرخش دائمی</label>
+                <input type="range" id="in-speed" min="1" max="150" value="40" oninput="OrbitForge.UI.applySettings()">
+            </div>
+            <div class="setting-row">
+                <label id="set-l-count">تعداد کل مدارها (۱ تا ۷)</label>
+                <input type="range" id="in-count" min="1" max="7" value="3" oninput="OrbitForge.Core.changeCount(this.value)">
+            </div>
+            <div id="orbit-list-ui" style="margin-top:8px;"></div>
+
+            <!-- بخش ۴: ابزارها و عیب‌یابی -->
+            <div class="settings-section-title">🛠️ ۴. ابزارها و عیب‌یابی</div>
+            <div class="toggle-row">
+                <span id="set-t-help-disable">غیرفعال‌سازی نمایش راهنما در شروع</span>
+                <input type="checkbox" id="check-disable-help" onchange="OrbitForge.UI.applyResources()">
+            </div>
+            <div class="toggle-row">
+                <span id="set-t-term">فعال بودن ترمینال کنسول</span>
+                <input type="checkbox" id="check-term" checked onchange="OrbitForge.UI.applyResources()">
+            </div>
+            
+            <!-- System Stats & Diagnostics -->
+            <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; font-family:monospace; font-size:11px; margin-top:10px; color:#cbd5e1;">
+                <div><b>System Info:</b></div>
+                <div>Engine Version: OrbitForge v1.0</div>
+                <div>AudioContext: <span id="diag-audio-state">Ready</span></div>
+                <div>Active Nodes: <span id="diag-nodes-count">0</span></div>
+                <div>Memory Buffer: Optimized (Circular)</div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:14px;">
+                <button class="btn btn-secondary" style="flex:1; justify-content:center; font-size:11px;" onclick="OrbitForge.Storage.exportData()">📤 Export</button>
+                <button class="btn btn-secondary" style="flex:1; justify-content:center; font-size:11px;" onclick="OrbitForge.Storage.importDataPrompt()">📥 Import</button>
+                <button class="btn btn-secondary" style="flex:1; justify-content:center; font-size:11px; color:#f43f5e; border-color:#f43f5e;" onclick="OrbitForge.Storage.resetDefaults()">🔄 ریست</button>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; margin-top:20px; justify-content:center;" onclick="OrbitForge.UI.toggleSidebar()" id="set-btn-close">ذخیره و بازگشت</button>
+            <div style="height: 40px;"></div> 
+        </div>
+
+        <div id="help-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 style="color:var(--accent); margin-top:0;">🌌 به OrbitForge v1.0 خوش آمدید</h2>
+                <p style="font-size:12px; line-height:1.7; color:#cbd5e1; text-align:justify;">
+                    موتور سینماتیک صوت و مدار پیشرفته. برای هدایت گوی کهکشانی و شنیدن آکوردهای صوتی از ابزار زیر استفاده کنید:
+                </p>
+                <div style="text-align:right; font-size:11px; line-height:2; margin:12px 0; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                    ⚡ <b>Space:</b> تغییر مدار (Orbit Switch)<br>
+                    🚀 <b>Shift:</b> بوست سرعت (Speed Boost)<br>
+                    📟 <b>Ctrl + T:</b> باز/بستن ترمینال<br>
+                    ⚙️ <b>Ctrl + S:</b> باز/بستن تنظیمات<br>
+                    🌐 <b>Ctrl + L:</b> تغییر زبان (FA / EN)<br>
+                    🔇 <b>M:</b> قطع / وصل صدا
+                </div>
+                <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="OrbitForge.UI.closeHelp()">متوجه شدم - شروع</button>
+            </div>
+        </div>
+
+        <div id="toast-container"></div>
+    </div>
+
+    <script>
+        window.OrbitForge = {
+            state: {
+                lang: 'en',
+                bg: '#020617',
+                playerColor: '#ffffff',
+                speed: 0.04,
+                inactiveOpacity: 0.15,
+                score: 0,
+                scoreStep: 10,
+                showScore: false,
+                trailLength: 25,
+                bgStyle: 'grid',
+                visualNotes: true,
+                disableHelpOnStart: false,
+                favorites: [],
+                orbits: [],
+                config: {
+                    showFps: true,
+                    sfxEnabled: true,
+                    musicEnabled: false,
+                    musicVolume: 0.8,
+                    musicPreset: 'cinematic',
+                    tempo: 700,
+                    showStats: true,
+                    termEnabled: true,
+                    muted: false,
+                    lowpassFilter: true
+                }
+            },
+            player: { angle: 0, target: 0, x: 0, y: 0, boost: 0, morph: 1 },
+            listeners: {},
+
+            on(event, fn) {
+                if(!this.listeners[event]) this.listeners[event] = [];
+                this.listeners[event].push(fn);
+            },
+            emit(event, data) {
+                if(this.listeners[event]) this.listeners[event].forEach(fn => fn(data));
+            }
+        };
+
+        OrbitForge.Storage = {
+            KEY: 'ORBITFORGE_SAVE_v1',
+            save() {
+                try {
+                    const data = {
+                        bg: OrbitForge.state.bg,
+                        playerColor: OrbitForge.state.playerColor,
+                        speed: OrbitForge.state.speed,
+                        score: OrbitForge.state.score,
+                        config: OrbitForge.state.config,
+                        lang: OrbitForge.state.lang,
+                        trailLength: OrbitForge.state.trailLength,
+                        bgStyle: OrbitForge.state.bgStyle,
+                        visualNotes: OrbitForge.state.visualNotes,
+                        disableHelpOnStart: OrbitForge.state.disableHelpOnStart,
+                        favorites: OrbitForge.state.favorites
+                    };
+                    localStorage.setItem(this.KEY, JSON.stringify(data));
+                } catch(e) {}
+            },
+            load() {
+                try {
+                    const raw = localStorage.getItem(this.KEY);
+                    if(raw) {
+                        const parsed = JSON.parse(raw);
+                        Object.assign(OrbitForge.state, parsed);
+                    }
+                } catch(e) {}
+            },
+            exportData() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(localStorage.getItem(this.KEY) || "{}");
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", "orbitforge_backup.json");
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            },
+            importDataPrompt() {
+                const jsonInput = prompt("لطفاً کد JSON پشتیبان را وارد کنید:");
+                if(jsonInput) {
+                    try {
+                        JSON.parse(jsonInput);
+                        localStorage.setItem(this.KEY, jsonInput);
+                        location.reload();
+                    } catch(e) {
+                        alert("فرمت JSON نامعتبر است.");
+                    }
+                }
+            },
+            resetDefaults() {
+                if(confirm("آیا از بازنشانی تنظیمات مطمئن هستید؟")) {
+                    localStorage.removeItem(this.KEY);
+                    location.reload();
+                }
+            }
+        };
+
+        OrbitForge.Achievements = {
+            unlocked: new Set(),
+            toast(msg, title = "🏆 دستاورد جدید") {
+                const container = document.getElementById('toast-container');
+                const t = document.createElement('div');
+                t.className = 'toast';
+                t.innerHTML = `<b>${title}</b><br>${msg}`;
+                container.appendChild(t);
+                setTimeout(() => t.remove(), 4000);
+            },
+            check(type, val) {
+                if(type === 'score' && val >= 100 && !this.unlocked.has('score100')) {
+                    this.unlocked.add('score100');
+                    this.toast("کسب امتیاز ۱۰۰ را تبریک می‌گوییم!", "🏆 استاد مدارها");
+                } else if(type === 'switch' && val >= 50 && !this.unlocked.has('switch50')) {
+                    this.unlocked.add('switch50');
+                    this.toast("۵۰ بار تغییر مدار موفقیت‌آمیز انجام شد.", "⚡ پرش‌های کوانتومی");
+                }
+            }
+        };
+
+        OrbitForge.Audio = {
+            audioCtx: null,
+            lowpassFilterNode: null,
+            musicInterval: null,
+            currentBeat: 0,
+            hasInteracted: false,
+            activeNodesCount: 0,
+             audioElement: null,
+            audioSourceNode: null,
+
+            presets: {
+                cinematic: { chords: [[130.81, 196.00, 261.63], [146.83, 220.00, 293.66], [164.81, 246.94, 329.63]], type: 'triangle', color: '#00f2ff' },
+                cyberpunk: { chords: [[110.00, 164.81, 220.00], [123.47, 185.00, 246.94]], type: 'sawtooth', color: '#f43f5e' },
+                ambient: { chords: [[196.00, 293.66, 440.00], [220.00, 329.63, 493.88]], type: 'sine', color: '#22c55e' },
+                chiptune: { chords: [[261.63, 329.63, 392.00], [349.23, 440.00, 523.25]], type: 'square', color: '#fbbf24' },
+                deepspace: { chords: [[65.41, 130.81, 196.00], [73.42, 146.83, 220.00]], type: 'sine', color: '#a855f7' },
+                hyperdrive: { chords: [[174.61, 261.63, 349.23], [196.00, 293.66, 392.00]], type: 'triangle', color: '#ec4899' }
+            },
+
+            initCtx() {
+                if (!this.audioCtx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.audioCtx = new AudioCtx();
+                        // Create BiquadFilter for sound smoothing (Lowpass cutoff 2000Hz to remove harshness)
+                        this.lowpassFilterNode = this.audioCtx.createBiquadFilter();
+                        this.lowpassFilterNode.type = 'lowpass';
+                        this.lowpassFilterNode.frequency.setValueAtTime(2000, this.audioCtx.currentTime);
+                        this.lowpassFilterNode.connect(this.audioCtx.destination);
+                    } else {
+                        return false;
+                    }
+                }
+                if (this.audioCtx.state === 'suspended' && this.hasInteracted) {
+                    this.audioCtx.resume();
+                }
+                document.getElementById('diag-audio-state').innerText = this.audioCtx.state;
+                return true;
+            },
+
+            handleUserInteraction() {
+                this.hasInteracted = true;
+                if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                    document.getElementById('diag-audio-state').innerText = this.audioCtx.state;
+                }
+            },
+
+            updateFilter() {
+                OrbitForge.state.config.lowpassFilter = document.getElementById('check-lowpass').checked;
+                if(this.lowpassFilterNode && this.audioCtx) {
+                    const cutoff = OrbitForge.state.config.lowpassFilter ? 2000 : 20000;
+                    this.lowpassFilterNode.frequency.setValueAtTime(cutoff, this.audioCtx.currentTime);
+                }
+                OrbitForge.Storage.save();
+            },
+
+            playSound(freq, type='sine', dur=0.2, vol=0.15) {
+                if(!OrbitForge.state.config.sfxEnabled || OrbitForge.state.config.muted || !this.hasInteracted) return;
+                if(!this.initCtx()) return;
+
+                try {
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + dur);
+                    
+                    osc.connect(gain);
+                    const destination = OrbitForge.state.config.lowpassFilter && this.lowpassFilterNode ? this.lowpassFilterNode : this.audioCtx.destination;
+                    gain.connect(destination);
+
+                    osc.start();
+                    osc.stop(this.audioCtx.currentTime + dur);
+
+                    this.activeNodesCount++;
+                    document.getElementById('diag-nodes-count').innerText = this.activeNodesCount;
+
+                    osc.onended = () => {
+                        osc.disconnect();
+                        gain.disconnect();
+                        this.activeNodesCount = Math.max(0, this.activeNodesCount - 1);
+                        document.getElementById('diag-nodes-count').innerText = this.activeNodesCount;
+                    };
+                } catch(e) {}
+            },
+
+            noteToFreq(noteStr) {
+                const notes = { 'C': -9, 'C#': -8, 'DB': -8, 'D': -7, 'D#': -6, 'EB': -6, 'E': -5, 'F': -4, 'F#': -3, 'GB': -3, 'G': -2, 'G#': -1, 'AB': -1, 'A': 0, 'A#': 1, 'BB': 1, 'B': 2 };
+                const match = noteStr.trim().match(/^([A-G][#b]?)([0-8])$/i);
+                if(!match) return parseFloat(noteStr) || 440;
+                const name = match[1].toUpperCase();
+                const octave = parseInt(match[2]);
+                const keyNum = notes[name];
+                return 440 * Math.pow(2, (keyNum + (octave - 4) * 12) / 12);
+            },
+
+            parseSongNotation(codeStr) {
+                const tokens = codeStr.replace(/\|/g, ',').split(',');
+                const score = [];
+                const safeTokens = tokens.slice(0, 32);
+
+                safeTokens.forEach(tok => {
+                    const parts = tok.trim().split(':');
+                    if(parts[0] && /^[A-Ga-g][#b]?[0-8]$/.test(parts[0].trim())) {
+                        const freq = this.noteToFreq(parts[0]);
+                        const dur = parts[1] ? Math.min(parseFloat(parts[1]), 2.0) : 0.5;
+                        score.push({ freq, dur });
+                    }
+                });
+                return score;
+            },
+
+            playCustomInput() {
+                const input = document.getElementById('in-custom-song').value.trim();
+                if(!input) return;
+                const parsed = this.parseSongNotation(input);
+                if(parsed.length > 0) {
+                    this.presets['custom_user'] = { chords: parsed.map(item => [item.freq]), type: 'triangle', color: '#ffaa00' };
+                    this.setPreset('custom_user');
+                    OrbitForge.Terminal.log(`Playing custom song with ${parsed.length} notes.`, '#00f2ff');
+                } else {
+                    OrbitForge.Terminal.log(`Invalid song notation format! Use format: E4:0.25, G4:0.5`, '#f43f5e');
+                }
+            },
+
+            switchAudioMode(mode) {
+                document.getElementById('mode-offline-box').style.display = (mode === 'offline') ? 'block' : 'none';
+                document.getElementById('mode-online-box').style.display = (mode === 'online') ? 'block' : 'none';
+                if(mode === 'online' && this.audioElement) {
+                    this.stopMusic();
+                }
+            },
+
+            playOnlineStream() {
+                const url = document.getElementById('in-online-url').value.trim();
+                if(!url) return;
+                this.stopMusic();
+                try {
+                    if(!this.audioElement) {
+                        this.audioElement = new Audio();
+                        this.audioElement.crossOrigin = "anonymous";
+                    }
+                    this.audioElement.src = url;
+                    this.audioElement.volume = OrbitForge.state.config.musicVolume;
+                    this.audioElement.play().then(() => {
+                        OrbitForge.Terminal.log(`Playing online audio stream successfully.`, '#22c55e');
+                    }).catch(err => {
+                        OrbitForge.Terminal.log(`Error playing audio stream: CORS or invalid URL.`, '#f43f5e');
+                    });
+                } catch(e) {
+                    OrbitForge.Terminal.log(`Failed to initialize audio stream.`, '#f43f5e');
+                }
+            },
+
+            addCurrentToFavorites() {
+                const presetKey = OrbitForge.state.config.musicPreset;
+                if(!OrbitForge.state.favorites.includes(presetKey)) {
+                    OrbitForge.state.favorites.push(presetKey);
+                    this.renderFavoritesUI();
+                    OrbitForge.Storage.save();
+                    OrbitForge.Achievements.toast(`پریست ${presetKey} به علاقه‌مندی‌ها افزوده شد.`, "❤️ علاقه‌مندی‌ها");
+                }
+            },
+
+            renderFavoritesUI() {
+                const container = document.getElementById('favorites-list-ui');
+                container.innerHTML = '';
+                if(OrbitForge.state.favorites.length === 0) {
+                    container.innerHTML = '<span style="color:#64748b">هیچ آهنگی در علاقه‌مندی‌ها نیست.</span>';
+                    return;
+                }
+                OrbitForge.state.favorites.forEach((fav, idx) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; background:rgba(255,255,255,0.04); padding:4px 8px; border-radius:4px;";
+                    row.innerHTML = `
+                        <span>🎵 ${fav}</span>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px;" onclick="OrbitForge.Audio.setPreset('${fav}')">پخش</button>
+                            <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; color:#f43f5e;" onclick="OrbitForge.Audio.removeFavorite(${idx})">✕</button>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            },
+
+            removeFavorite(idx) {
+                OrbitForge.state.favorites.splice(idx, 1);
+                this.renderFavoritesUI();
+                OrbitForge.Storage.save();
+            },
+
+            setPreset(presetKey) {
+                OrbitForge.state.config.musicPreset = presetKey;
+                if(OrbitForge.state.config.musicEnabled) {
+                    this.toggleMusic(false); 
+                    this.toggleMusic(true);
+                }
+                OrbitForge.Storage.save();
+            },
+
+            stopMusic() {
+                if (this.musicInterval) {
+                    clearInterval(this.musicInterval);
+                    this.musicInterval = null;
+                }
+                if (this.audioElement) {
+                    this.audioElement.pause();
+                }
+            },
+
+            toggleMusic(enabled) {
+                OrbitForge.state.config.musicEnabled = enabled;
+                document.getElementById('music-settings-container').style.display = enabled ? 'block' : 'none';
+
+                this.stopMusic();
+
+                if(enabled && this.hasInteracted && !OrbitForge.state.config.muted) {
+                    if(!this.initCtx()) return;
+
+                    this.currentBeat = 0;
+                    this.musicInterval = setInterval(() => {
+                        if(!OrbitForge.state.config.musicEnabled || OrbitForge.state.config.muted) return;
+                        try {
+                            const preset = this.presets[OrbitForge.state.config.musicPreset] || this.presets.cinematic;
+                            const chord = preset.chords[this.currentBeat % preset.chords.length];
+                            const masterVol = OrbitForge.state.config.musicVolume * 0.25;
+
+                            chord.forEach((noteFreq) => {
+                                const osc = this.audioCtx.createOscillator();
+                                const gain = this.audioCtx.createGain();
+                                osc.type = preset.type;
+                                osc.frequency.setValueAtTime(noteFreq, this.audioCtx.currentTime);
+                                
+                                gain.gain.setValueAtTime(0.001, this.audioCtx.currentTime);
+                                gain.gain.linearRampToValueAtTime(masterVol / chord.length, this.audioCtx.currentTime + 0.2);
+                                gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + 1.0);
+
+                                osc.connect(gain);
+                                const destination = OrbitForge.state.config.lowpassFilter && this.lowpassFilterNode ? this.lowpassFilterNode : this.audioCtx.destination;
+                                gain.connect(destination);
+
+                                osc.start();
+                                osc.stop(this.audioCtx.currentTime + 1.0);
+
+                                this.activeNodesCount++;
+                                osc.onended = () => {
+                                    osc.disconnect();
+                                    gain.disconnect();
+                                    this.activeNodesCount = Math.max(0, this.activeNodesCount - 1);
+                                };
+                            });
+
+                            this.currentBeat++;
+                            OrbitForge.emit('onBeat', { beat: this.currentBeat, chord, color: preset.color || '#00f2ff' });
+                        } catch(e) {}
+                    }, OrbitForge.state.config.tempo);
+                }
+            }
+        };
+
+        OrbitForge.Graphics = {
+            canvas: null,
+            ctx: null,
+            dragIdx: null,
+            lastTime: performance.now(),
+            frameCount: 0,
+            fps: 0,
+            
+            trailBuffer: new Float32Array(120),
+            trailHead: 0,
+            trailSize: 0,
+
+            particlePool: [],
+            maxParticles: 40,
+
+            // Visual colored notes floating particles
+            noteVisuals: [],
+
+            init(canvasEl) {
+                this.canvas = canvasEl;
+                this.ctx = canvasEl.getContext('2d');
+                this.updateDimensions();
+                this.attachEvents();
+
+                OrbitForge.on('onBeat', (data) => {
+                    if(OrbitForge.state.visualNotes) {
+                        this.addVisualNoteParticle(data.color);
+                    }
+                });
+            },
+
+            updateDimensions() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                OrbitForge.state.orbits.forEach((orb, i) => {
+                    if (i === 0) { orb.x = centerX - 120; orb.y = centerY; }
+                    else if (i === 1) { orb.x = centerX + 120; orb.y = centerY; }
+                });
+            },
+
+            attachEvents() {
+                this.canvas.addEventListener('mousedown', (e) => this.handlePointerDown(e));
+                window.addEventListener('mousemove', (e) => this.handlePointerMove(e));
+                window.addEventListener('mouseup', () => this.handlePointerUp());
+                
+                this.canvas.addEventListener('touchstart', (e) => this.handlePointerDown(e.touches[0]), {passive: false});
+                window.addEventListener('touchmove', (e) => {
+                    if (this.dragIdx !== null) {
+                        e.preventDefault(); 
+                        this.handlePointerMove(e.touches[0]);
+                    }
+                }, {passive: false});
+                window.addEventListener('touchend', () => this.handlePointerUp());
+
+                const unlockAudio = () => {
+                    OrbitForge.Audio.handleUserInteraction();
+                    window.removeEventListener('click', unlockAudio);
+                    window.removeEventListener('touchstart', unlockAudio);
+                    window.removeEventListener('keydown', unlockAudio);
+                };
+                window.addEventListener('click', unlockAudio);
+                window.addEventListener('touchstart', unlockAudio, {passive: true});
+                window.addEventListener('keydown', unlockAudio);
+            },
+
+            handlePointerDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const px = e.clientX - rect.left;
+                const py = e.clientY - rect.top;
+                OrbitForge.state.orbits.forEach((orb, i) => {
+                    if(Math.hypot(px - orb.x, py - orb.y) < orb.r + 30) {
+                        this.dragIdx = i;
+                        this.canvas.classList.add('grabbing');
+                        OrbitForge.Audio.playSound(700, 'sine', 0.05, 0.05);
+                    }
+                });
+            },
+
+            handlePointerMove(e) {
+                if(this.dragIdx !== null && OrbitForge.state.orbits[this.dragIdx]) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    OrbitForge.state.orbits[this.dragIdx].x = e.clientX - rect.left;
+                    OrbitForge.state.orbits[this.dragIdx].y = e.clientY - rect.top;
+                }
+            },
+
+            handlePointerUp() {
+                if(this.dragIdx !== null) {
+                    OrbitForge.Audio.playSound(550, 'sine', 0.05, 0.05);
+                    this.dragIdx = null;
+                    this.canvas.classList.remove('grabbing');
+                }
+            },
+
+            createExplosion(x, y, color) {
+                const count = window.innerWidth < 600 ? 8 : 16;
+                for(let i=0; i<count; i++) {
+                    if (this.particlePool.length < this.maxParticles) {
+                        this.particlePool.push({
+                            x, y, c: color,
+                            vx: (Math.random()-0.5)*14,
+                            vy: (Math.random()-0.5)*14,
+                            life: 1.0
+                        });
+                    }
+                }
+            },
+
+            addVisualNoteParticle(color) {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                this.noteVisuals.push({
+                    x: centerX + (Math.random() - 0.5) * 200,
+                    y: centerY + (Math.random() - 0.5) * 200,
+                    r: 10,
+                    maxR: 80 + Math.random() * 50,
+                    color: color,
+                    life: 1.0
+                });
+            },
+
+            pushTrail(x, y) {
+                const maxPoints = Math.min(OrbitForge.state.trailLength, 50);
+                this.trailBuffer[this.trailHead * 2] = x;
+                this.trailBuffer[this.trailHead * 2 + 1] = y;
+                this.trailHead = (this.trailHead + 1) % maxPoints;
+                if (this.trailSize < maxPoints) this.trailSize++;
+            },
+
+            render() {
+                this.frameCount++;
+                const now = performance.now();
+                if(now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount; this.frameCount = 0; this.lastTime = now;
+                    if(OrbitForge.state.config.showFps) document.getElementById('stat-fps').innerText = `${this.fps} FPS`;
+                }
+
+                try {
+                    const ctx = this.ctx;
+                    const state = OrbitForge.state;
+                    const p_logic = OrbitForge.player;
+
+                    if (!state.orbits || state.orbits.length === 0) {
+                        requestAnimationFrame(() => this.render());
+                        return;
+                    }
+
+                    ctx.fillStyle = state.bg;
+                    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    // Render Background Style Customization (grid, stars, lines, clean)
+                    if (state.bgStyle === 'grid' && window.innerWidth > 600) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                        for(let i=0; i<this.canvas.width; i+=80) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,this.canvas.height); ctx.stroke(); }
+                        for(let i=0; i<this.canvas.height; i+=80) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(this.canvas.width,i); ctx.stroke(); }
+                    } else if (state.bgStyle === 'stars') {
+                        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                        for(let i=0; i<30; i++) {
+                            const sx = (i * 137.5) % this.canvas.width;
+                            const sy = (i * 91.3) % this.canvas.height;
+                            ctx.fillRect(sx, sy, 2, 2);
+                        }
+                    } else if (state.bgStyle === 'lines') {
+                        ctx.strokeStyle = 'rgba(0,242,255,0.03)';
+                        for(let i=0; i<this.canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+100,this.canvas.height); ctx.stroke(); }
+                    }
+
+                    // Render Visual Colored Notes Ripples
+                    for(let i = this.noteVisuals.length - 1; i >= 0; i--) {
+                        let nv = this.noteVisuals[i];
+                        nv.r += 1.5;
+                        nv.life -= 0.02;
+                        if(nv.life <= 0) {
+                            this.noteVisuals.splice(i, 1);
+                        } else {
+                            ctx.strokeStyle = nv.color;
+                            ctx.lineWidth = 1.5;
+                            ctx.globalAlpha = nv.life * 0.7;
+                            ctx.beginPath();
+                            ctx.arc(nv.x, nv.y, nv.r, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                    }
+                    ctx.globalAlpha = 1.0;
+
+                    // Render Orbits
+                    state.orbits.forEach((orb, i) => {
+                        const active = (p_logic.target === i);
+                        ctx.beginPath();
+                        ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI*2);
+                        ctx.strokeStyle = orb.color;
+                        ctx.globalAlpha = active ? 1.0 : state.inactiveOpacity;
+                        ctx.lineWidth = active ? 3.5 : 1.2;
+                        if(!active) ctx.setLineDash([6, 10]); else ctx.setLineDash([]);
+                        ctx.stroke();
+                        if(active) { ctx.shadowBlur = 15; ctx.shadowColor = orb.color; ctx.stroke(); ctx.shadowBlur = 0; }
+                        ctx.globalAlpha = 1.0; ctx.setLineDash([]);
+                    });
+
+                    // Render Player Circular Buffer Light Trail
+                    if(state.trailLength > 0 && this.trailSize > 1) {
+                        ctx.beginPath();
+                        const maxPoints = Math.min(state.trailLength, 50);
+                        for(let i = 0; i < this.trailSize; i++) {
+                            const idx = (this.trailHead - this.trailSize + i + maxPoints) % maxPoints;
+                            const tx = this.trailBuffer[idx * 2];
+                            const ty = this.trailBuffer[idx * 2 + 1];
+                            if(i === 0) ctx.moveTo(tx, ty); else ctx.lineTo(tx, ty);
+                        }
+                        ctx.strokeStyle = state.playerColor;
+                        ctx.lineWidth = 2.5;
+                        ctx.globalAlpha = 0.6;
+                        ctx.stroke();
+                        ctx.globalAlpha = 1.0;
+                    }
+
+                    // Render Explosive Particles
+                    for(let i = this.particlePool.length - 1; i >= 0; i--) {
+                        let p = this.particlePool[i];
+                        p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+                        if(p.life <= 0) {
+                            this.particlePool.splice(i, 1);
+                        } else {
+                            ctx.fillStyle = p.c; ctx.globalAlpha = p.life;
+                            ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
+                        }
+                    }
+                    ctx.globalAlpha = 1.0;
+
+                    const safeTarget = Math.min(p_logic.target, state.orbits.length - 1);
+                    const curOrb = state.orbits[safeTarget];
+                    
+                    if(curOrb) {
+                        p_logic.angle += state.speed + p_logic.boost;
+                        p_logic.boost *= 0.94;
+
+                        const tx = curOrb.x + Math.cos(p_logic.angle) * curOrb.r;
+                        const ty = curOrb.y + Math.sin(p_logic.angle) * curOrb.r;
+
+                        if (state.orbits.length === 1) {
+                            p_logic.morph = 1;
+                            p_logic.x = tx;
+                            p_logic.y = ty;
+                        } else if(p_logic.morph < 1) {
+                            p_logic.morph += 0.08;
+                            const prevIdx = (safeTarget - 1 + state.orbits.length) % state.orbits.length;
+                            const prevOrb = state.orbits[prevIdx];
+                            const sx = prevOrb.x + Math.cos(p_logic.angle) * prevOrb.r;
+                            const sy = prevOrb.y + Math.sin(p_logic.angle) * prevOrb.r;
+                            p_logic.x = sx + (tx - sx) * p_logic.morph; 
+                            p_logic.y = sy + (ty - sy) * p_logic.morph;
+                        } else { 
+                            p_logic.x = tx; 
+                            p_logic.y = ty; 
+                        }
+
+                        this.pushTrail(p_logic.x, p_logic.y);
+
+                        ctx.shadowBlur = 18; ctx.shadowColor = state.playerColor;
+                        ctx.fillStyle = state.playerColor;
+                        ctx.beginPath(); ctx.arc(p_logic.x, p_logic.y, 8.5, 0, Math.PI*2); ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+
+                } catch (error) {
+                    console.error("Graphics Engine Error:", error);
+                } finally {
+                    requestAnimationFrame(() => this.render());
+                }
+            }
+        };
+
+        OrbitForge.Terminal = {
+            termHistory: [],
+            historyIdx: -1,
+            commands: {},
+
+            registerCommand(name, helpText, handler) {
+                this.commands[name] = { helpText, handler };
+            },
+
+            log(msg, color='#4ade80') {
+                const l = document.getElementById('term-logs');
+                const d = document.createElement('div');
+                d.style.color = color;
+                d.innerHTML = msg;
+                l.appendChild(d);
+                l.scrollTop = l.scrollHeight;
+            },
+
+            runCmd(cmd) {
+                this.log(`> ${cmd}`, '#00f2ff');
+                const parts = cmd.trim().split(' ');
+                const action = parts[0].toLowerCase();
+
+                if(this.commands[action]) {
+                    this.commands[action].handler(parts.slice(1), cmd);
+                } else {
+                    this.log(`Unknown command: '${action}'. Type 'help' for guidance.`, '#64748b');
+                }
+            },
+
+            init() {
+                const termInput = document.getElementById('term-input');
+                termInput.addEventListener('keydown', e => {
+                    if(e.key === 'Enter') {
+                        const cmd = e.target.value.trim();
+                        if(cmd) {
+                            this.runCmd(cmd);
+                            this.termHistory.unshift(cmd);
+                            this.historyIdx = -1;
+                        }
+                        e.target.value = '';
+                    } else if(e.key === 'ArrowUp') {
+                        if(this.historyIdx < this.termHistory.length - 1) {
+                            this.historyIdx++;
+                            e.target.value = this.termHistory[this.historyIdx];
+                        }
+                    } else if(e.key === 'ArrowDown') {
+                        if(this.historyIdx > 0) {
+                            this.historyIdx--;
+                            e.target.value = this.termHistory[this.historyIdx];
+                        } else {
+                            this.historyIdx = -1;
+                            e.target.value = '';
+                        }
+                    }
+                });
+
+                this.registerCommand('help', 'List all commands', () => {
+                    let text = "Available Commands:<br>";
+                    Object.keys(this.commands).forEach(c => {
+                        text += ` • <b>${c}</b>: ${this.commands[c].helpText}<br>`;
+                    });
+                    this.log(text, '#94a3b8');
+                });
+
+                this.registerCommand('clear', 'Clear console logs', () => {
+                    document.getElementById('term-logs').innerHTML = '';
+                });
+
+                this.registerCommand('score', 'score [on/off]', (args) => {
+                    if(args[0] === 'on') {
+                        OrbitForge.state.showScore = true;
+                        document.getElementById('stat-score').style.display = 'inline';
+                        this.log('Score system enabled.', '#22c55e');
+                    } else {
+                        OrbitForge.state.showScore = false;
+                        document.getElementById('stat-score').style.display = 'none';
+                        this.log('Score system disabled.', '#f43f5e');
+                    }
+                    OrbitForge.Storage.save();
+                });
+
+                this.registerCommand('mute', 'Toggle audio output', () => {
+                    OrbitForge.Core.toggleAudioMute();
+                    this.log(`Audio muted state: ${OrbitForge.state.config.muted}`, '#fbbf24');
+                });
+            }
+        };
+
+        OrbitForge.UI = {
+            i18n: {
+                fa: {
+                    settings: "تنظیمات", boost: "بوست", switch: "مدار", help: "راهنما",
+                    hmain: "تنظیمات پیشرفته سیستم", lbg: "رنگ پس‌زمینه محیط", lplayer: "رنگ توپ (بازیکن)",
+                    lspeed: "سرعت چرخش دائمی", lcount: "تعداد کل مدارها", horbits: "مدیریت اختصاصی مدارها",
+                    bclose: "ذخیره و بازگشت", hres: "استودیوی موسیقی و صدا", tfps: "نمایش نرخ فریم (FPS)",
+                    tstats: "نمایش وضعیت در تسک‌بار", tterm: "فعال بودن ترمینال",
+                    lopacity: "شفافیت مدارهای غیرفعال", ltrail: "طول دنباله نورانی (Trail)",
+                    tsfx: "افکت‌های صوتی (SFX)", tmusic: "موسیقی داینامیک پیشرفته (Music)",
+                    lvol: "میزان حجم صدای موسیقی", lpreset: "سبک آکورد و تراک موسیقی", ltempo: "سرعت ریتم (Tempo / BPM)",
+                    mute: "🔊 صدا"
+                },
+                en: {
+                    settings: "Settings", boost: "Boost", switch: "Orbit", help: "Help",
+                    hmain: "Advanced System Settings", lbg: "Background Color", lplayer: "Player Color",
+                    lspeed: "Base Rotation Speed", lcount: "Total Orbits", horbits: "Orbit Management",
+                    bclose: "Save & Close", hres: "Advanced Music Studio", tfps: "Show FPS Counter",
+                    tstats: "Show Taskbar Stats", tterm: "Enable Terminal Console",
+                    lopacity: "Inactive Orbit Opacity", ltrail: "Light Trail Length",
+                    tsfx: "Sound Effects (SFX)", tmusic: "Dynamic Background Music",
+                    lvol: "Master Music Volume", lpreset: "Music Chord Preset", ltempo: "Rhythm Tempo (BPM)",
+                    mute: "🔊 Sound"
+                }
+            },
+
+            switchLang() {
+                OrbitForge.state.lang = OrbitForge.state.lang === 'fa' ? 'en' : 'fa';
+                this.updateUI();
+                OrbitForge.Storage.save();
+            },
+
+            updateUI() {
+                const t = this.i18n[OrbitForge.state.lang];
+                const b = document.getElementById('app-body');
+                b.className = OrbitForge.state.lang;
+                b.dir = OrbitForge.state.lang === 'fa' ? 'rtl' : 'ltr';
+
+                document.getElementById('txt-settings').innerText = t.settings;
+                document.getElementById('txt-boost').innerText = t.boost;
+                document.getElementById('txt-switch').innerText = t.switch;
+                document.getElementById('txt-mute').innerText = t.mute;
+                document.getElementById('set-h-main').innerText = t.hmain;
+                document.getElementById('set-l-bg').innerText = t.lbg;
+                document.getElementById('set-l-player').innerText = t.lplayer;
+                document.getElementById('set-l-speed').innerText = t.lspeed;
+                document.getElementById('set-l-trail').innerText = t.ltrail;
+                document.getElementById('set-l-count').innerText = t.lcount;
+                document.getElementById('set-btn-close').innerText = t.bclose;
+                document.getElementById('set-l-opacity').innerText = t.lopacity;
+                document.getElementById('set-l-vol').innerText = t.lvol;
+                document.getElementById('set-l-preset').innerText = t.lpreset;
+                document.getElementById('set-l-tempo').innerText = t.ltempo;
+
+                document.getElementById('set-t-sfx').innerText = t.tsfx;
+                document.getElementById('set-t-music').innerText = t.tmusic;
+                document.getElementById('set-t-term').innerText = t.tterm;
+            },
+
+            applyResources() {
+                OrbitForge.state.config.sfxEnabled = document.getElementById('check-sfx').checked;
+                OrbitForge.state.config.termEnabled = document.getElementById('check-term').checked;
+                OrbitForge.state.disableHelpOnStart = document.getElementById('check-disable-help').checked;
+                
+                OrbitForge.state.config.musicVolume = document.getElementById('in-music-vol').value / 100;
+                OrbitForge.state.config.tempo = parseInt(document.getElementById('in-tempo').value);
+
+                const musicChecked = document.getElementById('check-music').checked;
+                if(OrbitForge.state.config.musicEnabled !== musicChecked) {
+                    OrbitForge.Audio.toggleMusic(musicChecked);
+                }
+
+                document.getElementById('nav-term-btn').style.display = OrbitForge.state.config.termEnabled ? 'inline-flex' : 'none';
+                document.getElementById('stat-audio-badge').innerText = OrbitForge.state.config.sfxEnabled ? "🔊 SFX" : "🔇 SFX";
+                
+                if(!OrbitForge.state.config.termEnabled) document.getElementById('terminal-win').style.display = 'none';
+                OrbitForge.Storage.save();
+            },
+
+            applySettings() {
+                OrbitForge.state.bg = document.getElementById('in-bg').value;
+                OrbitForge.state.playerColor = document.getElementById('in-player-c').value;
+                OrbitForge.state.speed = document.getElementById('in-speed').value / 1000;
+                OrbitForge.state.trailLength = parseInt(document.getElementById('in-trail').value);
+                OrbitForge.state.inactiveOpacity = document.getElementById('in-opacity').value / 100;
+                OrbitForge.state.bgStyle = document.getElementById('select-bg-style').value;
+                OrbitForge.state.visualNotes = document.getElementById('check-visual-notes').checked;
+                document.body.style.backgroundColor = OrbitForge.state.bg;
+                OrbitForge.Storage.save();
+            },
+
+            renderOrbitUI() {
+                const container = document.getElementById('orbit-list-ui');
+                container.innerHTML = '';
+                OrbitForge.state.orbits.forEach((orb, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'orbit-card';
+                    div.style.setProperty('--orb-c', orb.color);
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:11px; font-weight:bold;">ORBIT #${i+1}</span>
+                            <input type="color" value="${orb.color}" oninput="OrbitForge.state.orbits[${i}].color = this.value; OrbitForge.UI.renderOrbitUI();" style="width:26px; height:20px;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:10px; opacity:0.8;">شعاع:</span>
+                            <input type="range" min="30" max="170" value="${orb.r}" oninput="OrbitForge.state.orbits[${i}].r = parseInt(this.value)">
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            },
+
+            toggleSidebar() { document.getElementById('settings-sidebar').classList.toggle('open'); },
+            toggleTerminal() { 
+                if(!OrbitForge.state.config.termEnabled) return;
+                const t = document.getElementById('terminal-win');
+                t.style.display = (t.style.display === 'flex') ? 'none' : 'flex';
+                if(t.style.display === 'flex') document.getElementById('term-input').focus();
+            },
+            showHelp() { document.getElementById('help-modal').classList.add('open'); },
+            closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
+        };
+
+        OrbitForge.Core = {
+            switchCount: 0,
+
+            init() {
+                OrbitForge.Storage.load();
+                OrbitForge.Graphics.init(document.getElementById('mainCanvas'));
+                OrbitForge.Terminal.init();
+                OrbitForge.UI.updateUI();
+                OrbitForge.Audio.renderFavoritesUI();
+                
+                this.changeCount(3);
+                this.attachKeyboardShortcuts();
+                
+                window.addEventListener('resize', () => OrbitForge.Graphics.updateDimensions());
+                OrbitForge.Graphics.render();
+
+                if(!localStorage.getItem('ORBITFORGE_SEEN_TUT') && !OrbitForge.state.disableHelpOnStart) {
+                    OrbitForge.UI.showHelp();
+                    localStorage.setItem('ORBITFORGE_SEEN_TUT', 'true');
+                }
+            },
+
+            attachKeyboardShortcuts() {
+                window.addEventListener('keydown', (e) => {
+                    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.switchOrbit();
+                    } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                        e.preventDefault();
+                        this.boost();
+                    } else if (e.ctrlKey && e.code === 'KeyT') {
+                        e.preventDefault();
+                        OrbitForge.UI.toggleTerminal();
+                    } else if (e.ctrlKey && e.code === 'KeyS') {
+                        e.preventDefault();
+                        OrbitForge.UI.toggleSidebar();
+                    } else if (e.ctrlKey && e.code === 'KeyL') {
+                        e.preventDefault();
+                        OrbitForge.UI.switchLang();
+                    } else if (e.code === 'KeyM') {
+                        this.toggleAudioMute();
+                    }
+                });
+            },
+
+            toggleAudioMute() {
+                OrbitForge.state.config.muted = !OrbitForge.state.config.muted;
+                const btn = document.getElementById('txt-mute');
+                btn.innerText = OrbitForge.state.config.muted ? "🔇 قطع" : "🔊 صدا";
+                document.getElementById('stat-audio-badge').innerText = OrbitForge.state.config.muted ? "🔇 SFX" : "🔊 SFX";
+                OrbitForge.Terminal.log(`Mute state toggled: ${OrbitForge.state.config.muted}`, '#fbbf24');
+            },
+
+            changeCount(val) {
+                const count = Math.max(1, parseInt(val));
+                const centerX = OrbitForge.Graphics.canvas.width / 2;
+                const centerY = OrbitForge.Graphics.canvas.height / 2;
+                const colors = ['#00f2ff', '#f43f5e', '#a855f7', '#22c55e', '#fbbf24', '#ec4899', '#3b82f6'];
+                
+                while(OrbitForge.state.orbits.length < count) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 90 + Math.random() * 90;
+                    OrbitForge.state.orbits.push({ 
+                        x: centerX + Math.cos(angle) * dist, 
+                        y: centerY + Math.sin(angle) * dist, 
+                        r: 60 + Math.floor(Math.random() * 30), 
+                        color: colors[OrbitForge.state.orbits.length % colors.length] 
+                    });
+                }
+                while(OrbitForge.state.orbits.length > count) OrbitForge.state.orbits.pop();
+                
+                if(OrbitForge.player.target >= OrbitForge.state.orbits.length) {
+                    OrbitForge.player.target = 0;
+                }
+                OrbitForge.UI.renderOrbitUI();
+            },
+
+            switchOrbit() {
+                const p = OrbitForge.player;
+                if(OrbitForge.state.orbits.length === 0) return;
+
+                if(p.morph >= 1) {
+                    p.target = (p.target + 1) % OrbitForge.state.orbits.length;
+                    p.morph = 0;
+                    this.switchCount++;
+
+                    OrbitForge.Audio.playSound(520, 'triangle', 0.25, 0.2);
+                    OrbitForge.Graphics.createExplosion(p.x, p.y, OrbitForge.state.orbits[p.target].color);
+                    
+                    if(OrbitForge.state.showScore) {
+                        OrbitForge.state.score += OrbitForge.state.scoreStep;
+                        document.getElementById('stat-score').innerText = `🏆 ${OrbitForge.state.score}`;
+                        OrbitForge.Achievements.check('score', OrbitForge.state.score);
+                    }
+
+                    OrbitForge.Achievements.check('switch', this.switchCount);
+                    OrbitForge.Storage.save();
+                }
+            },
+
+            boost() {
+                OrbitForge.player.boost = 0.18;
+                OrbitForge.Audio.playSound(180, 'sawtooth', 0.35, 0.12);
+                OrbitForge.Graphics.createExplosion(OrbitForge.player.x, OrbitForge.player.y, '#ffffff');
+            }
+        };
+
+        window.addEventListener('load', () => {
+            OrbitForge.Core.init();
+        });
+    </script>
+</body>
+</html>
+
